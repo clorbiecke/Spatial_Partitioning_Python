@@ -1,12 +1,13 @@
 import pygame
 from pygame.constants import *
 from pygame.math import Vector2, Vector3
-from physics_objects import Ball
+from physics_objects import *
 from screeninfo import get_monitors
 from forces import Gravity, AirDrag
 from hud_components import Bar
 import math
 import random
+import itertools
 #from physics_objects import Circle  # copy in physics_objects.py from your previous project
 from forces import *
 
@@ -57,7 +58,7 @@ for i in range(num_balls):
     ncol = next(cols_it)
     k = (int(i/len(BALL_COLS)))/num_steps
     col = tuple(c - int(k * (3*c/5)) for c in ncol)
-    ball = Ball(mass=ball_mass, pos=(window.get_width()/2, ball_spacing * (i + 1)), radius=ball_radius, color=col, static=(i == num_balls-1), name=f"Ball {i}")  # change mass and radius
+    ball = Circle(mass=ball_mass, pos=(window.get_width()/2, ball_spacing * (i + 1)), radius=ball_radius, color=col, static=(i == num_balls-1), name=f"Ball {i}")  # change mass and radius
     objects.append(ball)
     if i > 0: pairs.append((objects[len(objects)-2], objects[len(objects)-1]))
 
@@ -199,7 +200,7 @@ def add_ball(pos):
     static=(prev_ball is None)
     name=f"New Ball{num_added}"
     print(f"prev_ball: {prev_ball.name if prev_ball is not None else "None"}")
-    ball = Ball(mass=ball_mass, pos=pos, radius=ball_radius, color=col, static=static, name=name)
+    ball = Circle(mass=ball_mass, pos=pos, radius=ball_radius, color=col, static=static, name=name)
     objects.append(ball)
     num_added += 1
     if prev_ball is not None:
