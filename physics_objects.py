@@ -12,6 +12,25 @@ import random
 import math
 import copy
 
+class Bounds:
+    def __init__(self, pos:Vector2, size:Vector2):
+        self.pos = pos
+        self.size = size
+
+    @property
+    def pos(self) -> Vector2:
+        return self._pos
+    @pos.setter
+    def pos(self, pos:Vector2):
+        self._pos = Vector2(pos)
+
+    @property
+    def size(self) -> Vector2:
+        return self._size
+    @size.setter
+    def size(self, size:Vector2):
+        self._size = Vector2(size)
+
 
 class PhysicsObject:
     phys_objs = []
@@ -23,12 +42,13 @@ class PhysicsObject:
         self.pos:Vector2 = pos
         self.vel:Vector2 = Vector2(vel)
         self.force:Vector2 = Vector2(0,0)
-        self.momi = momi
-        self.angle = angle # in degrees
-        self.avel = avel # deg/sec
-        self.torque = 0 # rotational force
+        self.momi:float = momi
+        self.angle:float = angle # in degrees
+        self.avel:float = avel # deg/sec
+        self.torque:float = 0 # rotational force
+        self.set_bounds()
     
-        self.generate_contacts = generate_contacts
+        self.generate_contacts:bool = generate_contacts
 
         self.phys_objs.append(self)
         self.on_update = on_update
@@ -40,6 +60,16 @@ class PhysicsObject:
         pass
 
     #-- METHODS
+    # Sets the bounds of this object. Should be overridden in subclasses.
+    def set_bounds(self):
+        self.bounds:Bounds = Bounds(self.pos.x, self.pos.y, 0,0)
+    # Updates the bounds of this object. Should be overridden in subclasses.
+    def update_bounds(self):
+        self.bounds.pos = self.pos
+    # Updates the shape of this object, then calls update_bounds(). Called at the end of update() before on_update(). Should be overridden in subclasses.
+    def update_shape(self, dt=0):
+        self.update_bounds()
+
     def clear_force(self):
         self.force = Vector2(0,0)
         self.torque = 0
@@ -55,16 +85,6 @@ class PhysicsObject:
     
     def add_torque(self, torque):
         self.torque += torque
-
-    # # NOTE: in beta
-    # def add_torque(self, force:Vector2, pos:Vector2):
-        # #TODO: ensure that this is correct (what if torque is in direction opposite pos->self.pos?)
-        # # add force to self based on force in direction pos->self.pos
-        # Fn = (self.pos-pos).normalize()
-        # F = Fn*((force*Fn)/(Fn*Fn))
-        # self.add_force(F)
-        # # add torque based on force perpendicular to pos->self.pos
-        # self.torque += (force-F)
     
     # Adds impulse, updating velocity. (impulse = force * delta_time)
     def add_impulse(self, impulse:Vector2, point:Vector2=None):
@@ -77,19 +97,6 @@ class PhysicsObject:
             self.avel += d_avel
         self.vel += impulse / self.mass
 
-    # NOTE: in beta
-    # def add_aimpulse(self, impulse:Vector2, pos:Vector2):
-    #     # component toward center of mass adds velocity
-    #     n = (self.pos-pos).normalize()
-    #     Jn = (impulse * n) * n
-    #     # perpendicular component adds angular velocity
-    #     Jp = impulse * n.rotate(90)
-    #     # print(f"Given impulse: {impulse}, calc Jn: {Jn}, calc Jp: {Jp}")
-
-    #     self.add_impulse(Jn)
-    #     # FIXME: caculate avel correctly
-    #     self.avel += (Jp/self.momi)
-
     # Change position by adding delta.
     def delta_pos(self, delta:Vector2):
         # change position by delta
@@ -99,7 +106,7 @@ class PhysicsObject:
     def update_momi(self):
         pass
 
-    def update(self, dt):
+    def update(self, dt=0):
         # only update if not static
         if not self.static:
             # update velocity using the current force
@@ -111,7 +118,10 @@ class PhysicsObject:
             # update angular velocity
             self.avel += (self.torque/self.momi) * dt
             # update angle
-            self.angle += (self.avel * dt) %360
+            self.angle += (self.avel * dt)
+            # update shape
+            self.update_shape(dt)
+
         
         for fun in self.on_update:
             fun(dt)
@@ -153,6 +163,7 @@ class PhysicsObject:
     @pos.setter
     def pos(self, pos:Vector2):
         self._pos = Vector2(pos)
+        self.update_bounds_pos()
 
     @property
     def on_update(self) -> list[lambda:()]:
@@ -202,6 +213,7 @@ class Circle(PhysicsObject):
         # ** means pack the unused keyword arguments into a dictionary
         # i.e. mass: 1, pos: (0,0), vel: (0,0)
         self.radius = radius
+        self.size = (2*radius, 2*radius)
         super().__init__(name, **kwargs)
         self.fill_color = fill_color if callable(fill_color) else lambda: fill_color
         self.outline_color = outline_color if callable(outline_color) else lambda: outline_color
@@ -214,12 +226,23 @@ class Circle(PhysicsObject):
     def update_momi(self):
         self.momi = (self.mass*self.radius**2)/2
 
+    def set_bounds(self):
+        self.bounds = Bounds(self.pos-(self.radius,self.radius), (self.radius*2,self.radius*2))
+
+    def update_bounds(self):
+        self.bounds.pos = self.pos - (self.radius, self.radius)
+
+    def update_shape(self, dt=0):
+        return super().update_shape(dt)
+
+
     @property # radius
     def radius(self) -> float:
         return self._radius() if callable(self._radius) else self._radius
     @radius.setter
     def radius(self, radius:float):
         self._radius = radius
+        self.bounds.size = (self.radius,self.radius)
     
     @property # color
     def fill_color(self) -> Color:
@@ -260,11 +283,11 @@ class Circle(PhysicsObject):
 # Wall
 class Wall(PhysicsObject):
     def __init__(self, point1=(0,0), point2=(0,0), color=colors.white, width=1, name="Wall", normal_length=0):
+        self.set_points(point1, point2)  # this also sets self.pos and self.normal
         super().__init__(name=name, mass=math.inf)
         self.color = color
         self.width = width
         self.normal_length = normal_length
-        self.set_points(point1, point2)  # this also sets self.pos and self.normal
         self.contact_type = "Wall"
 
     @property # color
@@ -279,10 +302,8 @@ class Wall(PhysicsObject):
         if self.normal_length > 0:
             pygame.draw.line(window, self.color, self.pos, self.pos + self.normal_length*self.normal) # normal
 
-    def update(self, dt):
+    def update(self, dt=0):
         super().update(dt)
-        self.point1 += self.vel * dt
-        self.point2 += self.vel * dt
 
     def set_points(self, point1=None, point2=None):
         if point1 is not None:
@@ -291,16 +312,31 @@ class Wall(PhysicsObject):
             self.point2 = Vector2(point2)
         self.pos = (self.point1 + self.point2)/2
         self.update_normal()
+        self.update_bounds()
 
     def update_normal(self):
         self.normal = (self.point2 - self.point1).normalize().rotate(90)
 
+    def set_bounds(self):
+        x = min(self.point1.x, self.point2.x)
+        y = min(self.point1.y, self.point2.y)
+        w = abs(self.point1.x - self.point2.x)
+        h = abs(self.point1.y - self.point2.y)
+        self.bounds = Bounds(x,y,w,h)
+
+    def update_bounds(self):
+        self.bounds.pos = (min(self.point1.x, self.point2.x), min(self.point1.y, self.point2.y))
+        self.bounds.size = (abs(self.point1.x - self.point2.x), abs(self.point1.y - self.point2.y))   
+    
+    def update_shape(self, dt=0):
+        self.point1 += self.vel * dt
+        self.point2 += self.vel * dt
+        return super().update_shape()
 
 # Polygon
 class Polygon(PhysicsObject):
     def __init__(self, local_points=[], fill_color=(255,0,0), outline_color:Color=(255,100,0), outline_width = 1, normals_length=0, **kwargs):
         super().__init__(**kwargs) 
-        self.bounding_radius = 0
         self.local_points:list[Vector2] = local_points
         self.fill_color = fill_color
         self.outline_color = outline_color
@@ -325,7 +361,6 @@ class Polygon(PhysicsObject):
     # METHODS
     def update(self, dt=0):
         super().update(dt)
-        self.update_polygon(False)
 
     def draw(self, window):
         if colors.make_color(self.fill_color).a !=0:
@@ -374,6 +409,20 @@ class Polygon(PhysicsObject):
             r = pt.magnitude()
             if r > self.bounding_radius: self.bounding_radius = r
 
+    def set_bounds(self):
+        return super().set_bounds()
+
+    def update_bounds(self):
+        minx = min(point.x for point in self.points)
+        maxx = max(point.x for point in self.points)
+        miny = min(point.y for point in self.points)
+        maxy = max(point.y for point in self.points)
+        self.bounds.pos = (minx,miny)
+        self.bounds.size = (maxx-minx, maxy-miny)
+        
+    def update_shape(self, dt=0):
+        self.update_polygon(False)
+        return super().update_shape(dt)
 
 
     # must be called whenever pos, angle, or local_points are changed

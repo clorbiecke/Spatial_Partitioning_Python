@@ -2,6 +2,7 @@
 Analyzes some 2D spatial partitioning methods.
 
 # TODO:
+- [ ] PhysicsObject must have a rect bounds for use in tree
 - [ ] Quad Tree
    - [ ] create Quad Tree data structure
    - [ ] create dynamic Quad Tree
