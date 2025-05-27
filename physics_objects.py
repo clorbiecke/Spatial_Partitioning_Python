@@ -31,6 +31,12 @@ class Bounds:
     def size(self, size:Vector2):
         self._size = Vector2(size)
 
+    @property
+    def width(self) -> float:
+        return self._size.x
+    @property
+    def height(self) -> float:
+        return self._size.y
 
 class PhysicsObject:
     phys_objs = []
@@ -163,7 +169,6 @@ class PhysicsObject:
     @pos.setter
     def pos(self, pos:Vector2):
         self._pos = Vector2(pos)
-        self.update_bounds_pos()
 
     @property
     def on_update(self) -> list[lambda:()]:
@@ -231,6 +236,8 @@ class Circle(PhysicsObject):
 
     def update_bounds(self):
         self.bounds.pos = self.pos - (self.radius, self.radius)
+        d = 2*self.radius
+        self.bounds.size = (d,d)
 
     def update_shape(self, dt=0):
         return super().update_shape(dt)
@@ -242,7 +249,6 @@ class Circle(PhysicsObject):
     @radius.setter
     def radius(self, radius:float):
         self._radius = radius
-        self.bounds.size = (self.radius,self.radius)
     
     @property # color
     def fill_color(self) -> Color:
@@ -268,13 +274,14 @@ class Circle(PhysicsObject):
         self._outline_width = width if callable(width) else lambda: width
         
     def draw(self, window:Surface):
-        s:Surface = Surface((abs(self.radius*2),abs(self.radius*2)), pygame.SRCALPHA)
+        radius = max(self.radius, 1)
+        s:Surface = Surface((abs(radius*2),abs(radius*2)), pygame.SRCALPHA)
 
         # pygame.gfxdraw.filled_circle(s, int(self.radius), int(self.radius), int(self.radius), self.fill_color)
         # pygame.gfxdraw.circle(s, int(self.radius), int(self.radius), int(self.radius), self.outline_color)
-        pygame.draw.circle(s, self.fill_color, (self.radius, self.radius), self.radius, 0)
+        pygame.draw.circle(s, self.fill_color, (radius, radius), radius, 0)
         if self.outline_width:
-            pygame.draw.circle(s, self.outline_color, (self.radius, self.radius), self.radius, self.outline_width)
+            pygame.draw.circle(s, self.outline_color, (radius, radius), radius, self.outline_width)
         # draw line to see avel
         # pygame.draw.line(s, colors.contrast_color(self.fill_color), (self.radius, self.radius), Vector2(self.radius, self.radius)+Vector2(0,self.radius).rotate(self.angle), 10)
         window.blit(s, self.pos-Vector2(self.radius,self.radius))
@@ -284,7 +291,7 @@ class Circle(PhysicsObject):
 class Wall(PhysicsObject):
     def __init__(self, point1=(0,0), point2=(0,0), color=colors.white, width=1, name="Wall", normal_length=0):
         self.set_points(point1, point2)  # this also sets self.pos and self.normal
-        super().__init__(name=name, mass=math.inf)
+        super().__init__(pos=self.pos, name=name, mass=math.inf)
         self.color = color
         self.width = width
         self.normal_length = normal_length
@@ -300,7 +307,7 @@ class Wall(PhysicsObject):
     def draw(self, window):
         pygame.draw.line(window, self.color, self.point1, self.point2, self.width)
         if self.normal_length > 0:
-            pygame.draw.line(window, self.color, self.pos, self.pos + self.normal_length*self.normal) # normal
+            pygame.draw.line(window, self.color, self.pos, self.pos + self.normal_length*self.normal, 10) # normal
 
     def update(self, dt=0):
         super().update(dt)
@@ -312,7 +319,6 @@ class Wall(PhysicsObject):
             self.point2 = Vector2(point2)
         self.pos = (self.point1 + self.point2)/2
         self.update_normal()
-        self.update_bounds()
 
     def update_normal(self):
         self.normal = (self.point2 - self.point1).normalize().rotate(90)
@@ -322,7 +328,7 @@ class Wall(PhysicsObject):
         y = min(self.point1.y, self.point2.y)
         w = abs(self.point1.x - self.point2.x)
         h = abs(self.point1.y - self.point2.y)
-        self.bounds = Bounds(x,y,w,h)
+        self.bounds = Bounds((x,y),(w,h))
 
     def update_bounds(self):
         self.bounds.pos = (min(self.point1.x, self.point2.x), min(self.point1.y, self.point2.y))

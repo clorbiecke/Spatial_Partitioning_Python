@@ -16,7 +16,8 @@ Analyzes some 2D spatial partitioning methods.
       - fixed spawn rate (random position on screen, random velocity)
    - [ ] create boundry walls
 - [ ] Menu
-   - create menu to select spatial partitioning method and begin simulation
+   [ ] create menu to select spatial partitioning method and begin simulation
+   [ ] create an option for avoiding duplicate collision checks or not
 - [ ] Simulation
    - [ ] run a specific number of iterations
       - record number of particles in sim and time to update for each iteration
