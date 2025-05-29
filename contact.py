@@ -146,8 +146,8 @@ class Circle_Circle(Contact):
         self.overlap = (a.radius + b.radius) - a.pos.distance_to(b.pos)
         self.normal = (a.pos - b.pos).normalize() if (a.pos - b.pos) != Vector2(0) else Vector2(1,0) # direction to a.pos from contact position (b.pos)
 
-    def resolve(self, restitution=None, update=True):
-        return super().resolve(restitution=restitution, update=update)
+    # def resolve(self, restitution=None, update=True):
+    #     return super().resolve(restitution=restitution, update=update)
     
     def point(self):
         return (self.a.pos - self.a.radius*self.normal)

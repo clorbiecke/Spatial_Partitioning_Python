@@ -61,6 +61,16 @@ class QuadTreeNode(Bounds):
                     child.query(bounds, found)
         return found
 
+    # Returns a set of all leaves within the given bounds
+    def query_leaves(self, bounds:Bounds, found:set = set()) -> set:
+        if self.intersects(bounds):
+            if not self.divided:
+                found.add(self)
+            else:
+                for child in self.get_children():
+                    child.query_leaves(bounds, found)
+        return found
+     
     # Returns 'True' if the object is found within this node or its children, else returns 'False'.
     def contains(self, obj) -> bool:
         # check if obj is in self

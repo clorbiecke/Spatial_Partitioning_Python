@@ -8,9 +8,10 @@ import colors
 from physics_objects import UniformCircle, Wall, PhysicsObject
 import contact
 from contact import Contact
-from spatial_partitioning import QuadTreeRoot as QuadTree
+from spatial_partitioning import *
 
-import math, random, time
+import math, random, time, itertools
+
 
 
 
@@ -19,7 +20,7 @@ pygame.init()
 pygame.font.init()
 
 monitor = get_monitors()[0]
-win_w, win_h = (0.5*monitor.width, 0.9*monitor.height)
+win_w, win_h = (0.9*monitor.width, 0.9*monitor.height)
 window = pygame.display.set_mode([win_w, win_h])
 
 # SET UP TIMING
@@ -36,7 +37,7 @@ tree_pos =Vector2(10,10)
 tree_size = Vector2(win_w-20, win_h-20)
 tree_depth = 6
 tree_cap = 4
-tree = QuadTree(tree_pos, tree_size)
+tree = QuadTreeRoot(tree_pos, tree_size)
 
 # OBJECTS
 objects:set[PhysicsObject] = set()
@@ -56,7 +57,7 @@ def spawn_circle():
     spawn_count += 1
     pos = (random.uniform(tree.pos.x, tree.pos.x+tree.width), random.uniform(tree.pos.y, tree.pos.y+tree.height))
     vel = (random.uniform(-100,100), random.uniform(-100,100))
-    objects.add(UniformCircle(density=0.001, radius = 10, pos=pos, vel=vel))
+    objects.add(UniformCircle(density=0.001, radius = random.randrange(1,20), pos=pos, vel=vel))
 
 
 
@@ -67,7 +68,47 @@ end = 0
 def perf_time() -> float:
     return end-start
 
+# PROCESS COLLISIONS
+def process_all_pairs():
+    for a,b in itertools.combinations(objects, 2):
+        c:Contact = contact.generate(a, b)
+        if c.bool:
+            c.resolve(restitution=restitution, friction=friction)
+
+def process_quadtree():
+    for obj in objects:
+        others = tree.query(obj.bounds)
+        others.discard(obj)
+        for other in others:
+            c:Contact = contact.generate(obj, other)
+            if c.bool:
+                c.resolve(restitution=restitution, friction=friction)
+
+def process_quadtree_no_duplicates():
+    checked = set()
+    for obj in objects:
+        checked.add(obj)
+        others = tree.query(obj.bounds)
+        for other in others:
+            if other in checked: continue
+            c:Contact = contact.generate(obj, other)
+            if c.bool:
+                c.resolve(restitution=restitution, friction=friction)
+
+def process_quadtree_leaves():
+    # get all leaves in quad tree and check collisions in each
+    num_contacts = 0
+    leaves:set[QuadTreeNode] = tree.query_leaves(tree)
+    for leaf in leaves:
+        for a,b in itertools.combinations(leaf.objects, 2):
+            c:Contact = contact.generate(a,b)
+            if c.bool:
+                num_contacts += 1
+                c.resolve(restitution=restitution, friction=friction)
+    print(f"process_quadtree_leaves() | num_contacts: {num_contacts}")
+
 # SIMULATION LOOP
+sim_start = time.perf_counter()
 while running:
     print("START OF LOOP")
     if spawn_count < num_to_spawn:
@@ -91,21 +132,22 @@ while running:
     print(f"updating objects... {perf_time()}")
 
     # COLLISION UPDATE
+    ## update quadtree
     start = time.perf_counter()
-    tree = QuadTree(tree_pos,tree_size, tree_depth, tree_cap)
+    tree = QuadTreeRoot(tree_pos,tree_size, tree_depth, tree_cap)
     for obj in objects:
         tree.insert(obj)
     end = time.perf_counter()
     print(f"creating quad tree... {perf_time()}")
 
+    ## process collisions
     start = time.perf_counter()
-    for obj in objects:
-        others = tree.query(obj.bounds)
-        others.discard(obj)
-        for other in others:
-            c:Contact = contact.generate(obj, other, restitution=restitution, friction=friction)
+    # process_all_pairs()
+    # process_quadtree()
+    # process_quadtree_no_duplicates()
+    process_quadtree_leaves()
     end = time.perf_counter()
-    print(f"resolving collisions... {perf_time()}")
+    print(f"resolving collisions... {perf_time()}\n\tnum_contacts: {None}")
 
     # DRAW ALL
     start = time.perf_counter()
@@ -124,4 +166,6 @@ while running:
     if spawn_count >= num_to_spawn: running = False
 
 # END OF SIMULATION LOOP
+sim_end = time.perf_counter()
+print(f"Simulation ended. Time to complete: {sim_end-sim_start}")
 pygame.quit()
