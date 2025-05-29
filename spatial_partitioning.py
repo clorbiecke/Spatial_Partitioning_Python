@@ -2,6 +2,7 @@ from pygame import draw
 import physics_objects, contact
 from physics_objects import Bounds, PhysicsObject
 from pygame import Vector2
+from collections import defaultdict
 import math
 
 # QUAD TREE NODE
@@ -114,3 +115,47 @@ class QuadTreeRoot(QuadTreeNode):
 
 
 # SPATIAL HASHING TABLE
+class SpatialHashTable(Bounds):
+    def __init__(self, pos, size, cell_width, cell_height):
+        super().__init__(pos, size)
+        self.cell_width = cell_width
+        self.cell_height = cell_height
+        self.grid = defaultdict(set[PhysicsObject])
+
+    def coord_hash(self, x, y):
+        return (x // self.cell_width, y // self.cell_height)
+    
+    def insert(self, obj:PhysicsObject):
+        xmin,ymin = self.coord_hash(obj.bounds.pos)
+        xmax,ymax = self.coord_hash(obj.bounds.pos+obj.bounds.size)
+        for x in range(xmin, xmax+1):
+            for y in range(ymin, ymax+1):
+                self.grid[(x,y)].add(obj)
+
+    def query(self, bounds:Bounds, found:set[PhysicsObject] = set()):
+        xmin,ymin = self.coord_hash(bounds.pos)
+        xmax,ymax = self.coord_hash(bounds.pos+bounds.size)
+        for x in range(xmin, xmax+1):
+            for y in range(ymin, ymax+1):
+                found.update(self.grid[(x,y)])
+        return found
+
+    def clear(self):
+        self.grid.clear()
+
+    def draw(self, surface):
+        draw.rect(surface, (200,100,100), (self.pos, self.size), 1)
+        x = self.width // self.cell_width
+        y = self.height // self.cell_height
+        for n in range(len(x+1)):
+            for m in range(len(y+1)):
+                draw.rect(surface, (200,100,100), (self.pos+(x*self.cell_width, y*self.cell_height), (self.cell_width,self.cell_height)), 1)
+
+
+
+
+
+
+
+
+
