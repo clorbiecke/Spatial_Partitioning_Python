@@ -4,10 +4,15 @@ from physics_objects import Bounds, PhysicsObject
 from pygame import Vector2
 from collections import defaultdict
 import math
+import numpy as np
+
 
 # QUAD TREE NODE
 # Initialized with an anchor position, size, and capacity.
 class QuadTreeNode(Bounds):
+    
+    __slots__ = ('_pos', '_size', 'depth', 'max_depth', 'capacity', 'divided', 'objects', 'ne', 'nw', 'se', 'sw')
+
     def __init__(self, pos:Vector2, size:Vector2, depth:int, max_depth:int, capacity:int=4):
         # print(f"QuadTreeNode... pos: {pos}, size: {size}")
         super().__init__(pos, size)
@@ -126,7 +131,7 @@ class SpatialHashTable(Bounds):
         return (x // self.cell_width, y // self.cell_height)
     
     def insert(self, obj:PhysicsObject):
-        xmin,ymin = self.coord_hash(obj.bounds.pos)
+        xmin,ymin = self.coord_hash(obj.bounds.pos.x, obj.bounds.pos.y)
         xmax,ymax = self.coord_hash(obj.bounds.pos+obj.bounds.size)
         for x in range(xmin, xmax+1):
             for y in range(ymin, ymax+1):

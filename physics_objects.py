@@ -33,10 +33,10 @@ class Bounds:
 
     @property
     def width(self) -> float:
-        return self._size.x
+        return self.size.x
     @property
     def height(self) -> float:
-        return self._size.y
+        return self.size.y
 
 class PhysicsObject:
     phys_objs = []

@@ -44,7 +44,7 @@ grid_pos = Vector2(10,10)
 grid_size = Vector2(win_w-20, win_h-20)
 cell_width = grid_size.x / 10
 cell_height = grid_size.y / 10
-hash_grid = SpatialHashTable(grid_pos, grid_size, cell_width, cell_height)
+# hash_grid = SpatialHashTable(grid_pos, grid_size, cell_width, cell_height)
 
 # OBJECTS
 objects:set[PhysicsObject] = set()
@@ -150,33 +150,33 @@ def process_quadtree_leaves():
     print(f"process_quadtree_leaves() | num_contacts: {num_contacts}, time: {perf_time()}")
 
 # hash table
-def process_hash_table():
-    global start, end
-    num_contacts = 0
-    start = time.perf_counter()
-    for obj in objects:
-        found = hash_grid.query(obj.bounds)
-        found.discard(obj)
-        for other in found:
-            c:Contact = contact.generate(obj, other)
-            if c.bool:
-                num_contacts += 1
-                c.resolve(restitution=restitution, friction=friction)
-    end = time.perf_counter()
-    print(f"process_hash_table() | num_contacts: {num_contacts}, time: {perf_time()}")   
+# def process_hash_table():
+#     global start, end
+#     num_contacts = 0
+#     start = time.perf_counter()
+#     for obj in objects:
+#         found = hash_grid.query(obj.bounds)
+#         found.discard(obj)
+#         for other in found:
+#             c:Contact = contact.generate(obj, other)
+#             if c.bool:
+#                 num_contacts += 1
+#                 c.resolve(restitution=restitution, friction=friction)
+#     end = time.perf_counter()
+#     print(f"process_hash_table() | num_contacts: {num_contacts}, time: {perf_time()}")   
 
-def process_hash_table_cells():
-    global start, end
-    num_contacts = 0
-    start = time.perf_counter()
-    for cell in hash_grid:
-        for a,b in itertools.combinations(cell, 2):
-            c:Contact = contact.generate(a,b)
-            if c.bool:
-                num_contacts += 1
-                c.resolve(restitution=restitution, friction=friction)
-    end = time.perf_counter()
-    print(f"process_hash_table_cells() | num_contacts: {num_contacts}, time: {perf_time()}")   
+# def process_hash_table_cells():
+#     global start, end
+#     num_contacts = 0
+#     start = time.perf_counter()
+#     for cell in hash_grid:
+#         for a,b in itertools.combinations(cell, 2):
+#             c:Contact = contact.generate(a,b)
+#             if c.bool:
+#                 num_contacts += 1
+#                 c.resolve(restitution=restitution, friction=friction)
+#     end = time.perf_counter()
+#     print(f"process_hash_table_cells() | num_contacts: {num_contacts}, time: {perf_time()}")   
 
 
 # SIMULATION LOOP
@@ -211,19 +211,19 @@ while running:
     print(f"creating quad tree... {perf_time()}")
 
     ## update hash table
-    start = time.perf_counter()
-    update_hash_grid()
-    end = time.perf_counter()
-    print(f"creating hash table... {perf_time()}")
+    # start = time.perf_counter()
+    # update_hash_grid()
+    # end = time.perf_counter()
+    # print(f"creating hash table... {perf_time()}")
 
     ## process collisions
     # start = time.perf_counter()
     # process_all_pairs()
     # process_quadtree()
     # process_quadtree_no_duplicates()
-    # process_quadtree_leaves()
-    process_hash_table()
-    process_hash_table_cells()
+    process_quadtree_leaves()
+    # process_hash_table()
+    # process_hash_table_cells()
     # end = time.perf_counter()
     # print(f"resolving collisions... {perf_time()}")
 
@@ -232,8 +232,8 @@ while running:
     window.fill(BG_COLOR)
     for obj in objects:
         obj.draw(window)
-    # tree.draw(window)
-    hash_grid.draw(window)
+    tree.draw(window)
+    # hash_grid.draw(window)
     end = time.perf_counter()
     print(f"drawing objects... {perf_time()}")
 
