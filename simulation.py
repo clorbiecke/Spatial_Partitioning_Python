@@ -47,10 +47,14 @@ cell_height = grid_size.y / 10
 # hash_grid = SpatialHashTable(grid_pos, grid_size, cell_width, cell_height)
 
 # OBJECTS
-objects:set[PhysicsObject] = set()
+# objects:set[PhysicsObject] = set()
+objects:list[PhysicsObject] = []
+
 wall_pts = [tree_pos, tree_pos+(tree_size.x,0), tree_pos+tree_size, tree_pos+(0,tree_size.y)]
 for i in range(len(wall_pts)):
-    objects.add(Wall(wall_pts[i-1], wall_pts[i], colors.red, 0, f"BoundryWall{i}", 0))
+    # objects.add(Wall(wall_pts[i-1], wall_pts[i], colors.red, 0, f"BoundryWall{i}", 0))
+    objects.append(Wall(wall_pts[i-1], wall_pts[i], colors.red, 0, f"BoundryWall{i}", 0))
+
 
 # Collisions
 restitution = 1
@@ -64,7 +68,8 @@ def spawn_circle():
     spawn_count += 1
     pos = (random.uniform(tree.pos.x, tree.pos.x+tree.width), random.uniform(tree.pos.y, tree.pos.y+tree.height))
     vel = (random.uniform(-100,100), random.uniform(-100,100))
-    objects.add(UniformCircle(density=0.001, radius = random.randrange(1,20), pos=pos, vel=vel))
+    # objects.add(UniformCircle(density=0.001, radius = random.randrange(1,20), pos=pos, vel=vel))
+    objects.append(UniformCircle(density=0.001, radius = random.randrange(1,20), pos=pos, vel=vel))
 
 
 
@@ -72,6 +77,50 @@ def spawn_circle():
 running = True
 start = 0
 end = 0
+
+
+def setup_sim(num_iterations:int = 1):
+    global running, start, end, sim_num, sim_iter, run_times
+    running = True
+    start = 0
+    end = 0
+    sim_num = 0
+    sim_iter = num_iterations
+    run_times = []
+
+    reset_sim()
+
+def reset_sim():
+    # set/reset objects and spawning
+    global spawn_count, num_to_spawn
+    objects.clear()
+    spawn_count = 0
+
+def next_sim() -> bool:
+    global sim_end, sim_start, sim_num
+    sim_end = time.perf_counter()
+    sim_num += 1
+    end_sim()
+    reset_sim()
+    sim_start = time.perf_counter()
+    return sim_num < sim_iter
+
+def start_sim():
+    global sim_start
+    # setup_sim()
+    sim_start = time.perf_counter()
+
+def end_sim():
+    run_times.append(sim_end-sim_start)
+    print(f"Sim iteration {sim_num}\{sim_iter} ended. Time to complete: {sim_end-sim_start}")
+
+def get_avg_time():
+    avg = 0
+    for time in run_times:
+        avg += time
+    return (avg/len(run_times))
+
+
 def perf_time() -> float:
     return end-start
 
@@ -79,6 +128,8 @@ def perf_time() -> float:
 def update_tree():
     global tree
     tree = QuadTreeRoot(tree_pos,tree_size, tree_depth, tree_cap)
+    # print(f"updating... num leaves: {len(tree.query_leaves(tree))}, should be 1")
+
     for obj in objects:
         tree.insert(obj)
     
@@ -135,19 +186,26 @@ def process_quadtree_no_duplicates():
     print(f"process_quadtree_no_duplicates() | num_contacts: {num_contacts}, time: {perf_time()}")
 
 def process_quadtree_leaves():
+    # FIXME: there is an issue where number of leaves just keeps getting bigger, 
+    #   even after resetting the sim and clearing objects
+
     # get all leaves in quad tree and check collisions in each
     global start, end
     num_contacts = 0
+    num_checks = 0
+    print(f"num_checks: {num_checks}")
     start = time.perf_counter()
-    leaves:set[QuadTreeNode] = tree.query_leaves(tree)
+    leaves:set[QuadTreeNode] = tree.query_leaves(tree, set())
+    print(f"leaves len: {len(leaves)}")
     for leaf in leaves:
         for a,b in itertools.combinations(leaf.objects, 2):
+            num_checks += 1
             c:Contact = contact.generate(a,b)
             if c.bool:
                 num_contacts += 1
                 c.resolve(restitution=restitution, friction=friction)
     end = time.perf_counter()
-    print(f"process_quadtree_leaves() | num_contacts: {num_contacts}, time: {perf_time()}")
+    print(f"process_quadtree_leaves() | num_contacts: {num_contacts}, time: {perf_time()}, num_checks: {num_checks}")
 
 # hash table
 # def process_hash_table():
@@ -179,8 +237,12 @@ def process_quadtree_leaves():
 #     print(f"process_hash_table_cells() | num_contacts: {num_contacts}, time: {perf_time()}")   
 
 
+# DEBUGGING
+setup_sim(10)
+# END DEBUGGING
+
 # SIMULATION LOOP
-sim_start = time.perf_counter()
+start_sim()
 while running:
     print("START OF LOOP")
     if spawn_count < num_to_spawn:
@@ -201,14 +263,14 @@ while running:
     for obj in objects:
         obj.update(dt)
     end = time.perf_counter()
-    print(f"updating objects... {perf_time()}")
+    # print(f"updating objects... {perf_time()}")
 
     # COLLISION UPDATE
     ## update quadtree
     start = time.perf_counter()
     update_tree()
     end = time.perf_counter()
-    print(f"creating quad tree... {perf_time()}")
+    # print(f"creating quad tree... {perf_time()}")
 
     ## update hash table
     # start = time.perf_counter()
@@ -235,16 +297,16 @@ while running:
     tree.draw(window)
     # hash_grid.draw(window)
     end = time.perf_counter()
-    print(f"drawing objects... {perf_time()}")
+    # print(f"drawing objects... {perf_time()}")
 
     # UPDATE DISPLAY
     pygame.display.update()
     clock.tick(FPS)
     print("")
 
-    if spawn_count >= num_to_spawn: running = False
+    if spawn_count >= num_to_spawn: 
+        running = next_sim()
 
 # END OF SIMULATION LOOP
-sim_end = time.perf_counter()
-print(f"Simulation ended. Time to complete: {sim_end-sim_start}")
+print(f"Simulations complete. Average iteration time: {get_avg_time()}")
 pygame.quit()
