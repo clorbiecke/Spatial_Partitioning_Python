@@ -35,8 +35,8 @@ BG_COLOR = colors.darken(colors.midnight, 0.5)
 # QUAD TREE
 tree_pos = Vector2(10,10)
 tree_size = Vector2(win_w-20, win_h-20)
-tree_depth = 6
-tree_cap = 4
+tree_depth = 8
+tree_cap = 6
 tree = QuadTreeRoot(tree_pos, tree_size)
 
 # SPATIAL HASH TABLE
@@ -47,13 +47,13 @@ cell_height = grid_size.y / 10
 # hash_grid = SpatialHashTable(grid_pos, grid_size, cell_width, cell_height)
 
 # OBJECTS
-# objects:set[PhysicsObject] = set()
-objects:list[PhysicsObject] = []
+objects:set[PhysicsObject] = set()
+# objects:list[PhysicsObject] = []
 
 wall_pts = [tree_pos, tree_pos+(tree_size.x,0), tree_pos+tree_size, tree_pos+(0,tree_size.y)]
 for i in range(len(wall_pts)):
-    # objects.add(Wall(wall_pts[i-1], wall_pts[i], colors.red, 0, f"BoundryWall{i}", 0))
-    objects.append(Wall(wall_pts[i-1], wall_pts[i], colors.red, 0, f"BoundryWall{i}", 0))
+    objects.add(Wall(wall_pts[i-1], wall_pts[i], colors.red, 0, f"BoundryWall{i}", 0))
+    # objects.append(Wall(wall_pts[i-1], wall_pts[i], colors.red, 0, f"BoundryWall{i}", 0))
 
 
 # Collisions
@@ -61,15 +61,15 @@ restitution = 1
 friction = 0.5
 
 ## Spawning
-num_to_spawn = 500
+num_to_spawn = 10000
 spawn_count = 0
 def spawn_circle():
     global spawn_count
     spawn_count += 1
     pos = (random.uniform(tree.pos.x, tree.pos.x+tree.width), random.uniform(tree.pos.y, tree.pos.y+tree.height))
     vel = (random.uniform(-100,100), random.uniform(-100,100))
-    # objects.add(UniformCircle(density=0.001, radius = random.randrange(1,20), pos=pos, vel=vel))
-    objects.append(UniformCircle(density=0.001, radius = random.randrange(1,20), pos=pos, vel=vel))
+    objects.add(UniformCircle(density=0.001, radius = 0.5, pos=pos, vel=vel))
+    # objects.append(UniformCircle(density=0.001, radius = random.randrange(1,20), pos=pos, vel=vel))
 
 
 
@@ -201,7 +201,7 @@ def process_quadtree_leaves():
                 num_contacts += 1
                 c.resolve(restitution=restitution, friction=friction)
     end = time.perf_counter()
-    # print(f"process_quadtree_leaves() | num_contacts: {num_contacts}, time: {perf_time()}")#, num_checks: {num_checks}"
+    print(f"process_quadtree_leaves() | num_contacts: {num_contacts}, time: {perf_time()}")#, num_checks: {num_checks}"
 
 # hash table
 # def process_hash_table():
@@ -234,18 +234,18 @@ def process_quadtree_leaves():
 
 
 # DEBUGGING
-setup_sim(10)
+setup_sim(1)
 processing_times = []
 # END DEBUGGING
 
 # SIMULATION LOOP
 start_sim()
 while running:
-    # print("START OF LOOP")
+    print("START OF LOOP")
     if spawn_count < num_to_spawn:
-        for i in range(num_to_spawn-spawn_count):
+        for i in range(num_to_spawn // 100):
             spawn_circle()
-    # print(f"spawn count: {spawn_count}")
+    print(f"spawn count: {spawn_count}")
 
     # EVENTS
     while event := pygame.event.poll():
@@ -260,14 +260,14 @@ while running:
     for obj in objects:
         obj.update(dt)
     end = time.perf_counter()
-    # print(f"updating objects... {perf_time()}")
+    print(f"updating objects... {perf_time()}")
 
     # COLLISION UPDATE
     ## update quadtree
     start = time.perf_counter()
     update_tree()
     end = time.perf_counter()
-    # print(f"creating quad tree... {perf_time()}")
+    print(f"creating quad tree... {perf_time()}")
 
     ## update hash table
     # start = time.perf_counter()
@@ -295,7 +295,7 @@ while running:
     tree.draw(window)
     # hash_grid.draw(window)
     end = time.perf_counter()
-    # print(f"drawing objects... {perf_time()}")
+    print(f"drawing objects... {perf_time()}")
 
     # UPDATE DISPLAY
     pygame.display.update()
