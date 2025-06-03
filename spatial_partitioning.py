@@ -68,7 +68,8 @@ class QuadTreeNode(Bounds):
         return found
 
     # Returns a set of all leaves within the given bounds
-    def query_leaves(self, bounds:Bounds, found:set = set()) -> set:
+    def query_leaves(self, bounds:Bounds, found:set = None) -> set:
+        if found is None: found = set()
         if self.intersects(bounds):
             if not self.divided:
                 found.add(self)

@@ -112,7 +112,7 @@ def start_sim():
 
 def end_sim():
     run_times.append(sim_end-sim_start)
-    print(f"Sim iteration {sim_num}\{sim_iter} ended. Time to complete: {sim_end-sim_start}")
+    # print(f"* Sim iteration {sim_num}\{sim_iter} ended. Time to complete: {sim_end-sim_start}\n")
 
 def get_avg_time():
     avg = 0
@@ -186,17 +186,13 @@ def process_quadtree_no_duplicates():
     print(f"process_quadtree_no_duplicates() | num_contacts: {num_contacts}, time: {perf_time()}")
 
 def process_quadtree_leaves():
-    # FIXME: there is an issue where number of leaves just keeps getting bigger, 
-    #   even after resetting the sim and clearing objects
-
     # get all leaves in quad tree and check collisions in each
     global start, end
     num_contacts = 0
     num_checks = 0
-    print(f"num_checks: {num_checks}")
     start = time.perf_counter()
-    leaves:set[QuadTreeNode] = tree.query_leaves(tree, set())
-    print(f"leaves len: {len(leaves)}")
+    leaves:set[QuadTreeNode] = tree.query_leaves(tree)
+    # print(f"leaves len: {len(leaves)}")
     for leaf in leaves:
         for a,b in itertools.combinations(leaf.objects, 2):
             num_checks += 1
@@ -205,7 +201,7 @@ def process_quadtree_leaves():
                 num_contacts += 1
                 c.resolve(restitution=restitution, friction=friction)
     end = time.perf_counter()
-    print(f"process_quadtree_leaves() | num_contacts: {num_contacts}, time: {perf_time()}, num_checks: {num_checks}")
+    # print(f"process_quadtree_leaves() | num_contacts: {num_contacts}, time: {perf_time()}")#, num_checks: {num_checks}"
 
 # hash table
 # def process_hash_table():
@@ -239,16 +235,17 @@ def process_quadtree_leaves():
 
 # DEBUGGING
 setup_sim(10)
+processing_times = []
 # END DEBUGGING
 
 # SIMULATION LOOP
 start_sim()
 while running:
-    print("START OF LOOP")
+    # print("START OF LOOP")
     if spawn_count < num_to_spawn:
-        for i in range(10):
+        for i in range(num_to_spawn-spawn_count):
             spawn_circle()
-    print(f"spawn count: {spawn_count}")
+    # print(f"spawn count: {spawn_count}")
 
     # EVENTS
     while event := pygame.event.poll():
@@ -284,6 +281,7 @@ while running:
     # process_quadtree()
     # process_quadtree_no_duplicates()
     process_quadtree_leaves()
+    processing_times.append(perf_time())
     # process_hash_table()
     # process_hash_table_cells()
     # end = time.perf_counter()
@@ -302,11 +300,16 @@ while running:
     # UPDATE DISPLAY
     pygame.display.update()
     clock.tick(FPS)
-    print("")
+    # print("")
 
     if spawn_count >= num_to_spawn: 
         running = next_sim()
 
 # END OF SIMULATION LOOP
-print(f"Simulations complete. Average iteration time: {get_avg_time()}")
+print(f"\nSimulations complete. Average iteration time: {get_avg_time()}")
+avg_proc_time = 0
+for t in processing_times:
+    avg_proc_time += t
+avg_proc_time /= len(processing_times)
+print(f"Average processing time (capacity: {tree_cap}): {avg_proc_time}\n")
 pygame.quit()
